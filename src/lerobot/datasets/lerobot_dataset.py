@@ -1164,43 +1164,49 @@ class LeRobotDataset(torch.utils.data.Dataset):
             parallel_encoding (bool, optional): If True, encode videos in parallel using ProcessPoolExecutor.
                 Defaults to True on Linux, False on macOS as it tends to use all the CPU available already.
         """
+        print("Saving episode")
         episode_buffer = episode_data if episode_data is not None else self.episode_buffer
 
         validate_episode_buffer(episode_buffer, self.meta.total_episodes, self.features)
+        print("Episode buffer validated")
 
         # size and task are special cases that won't be added to hf_dataset
         episode_length = episode_buffer.pop("size")
+        print("Episode length popped")
         tasks = episode_buffer.pop("task")
         episode_tasks = list(set(tasks))
         episode_index = episode_buffer["episode_index"]
-
+        print("Episode index popped")
         episode_buffer["index"] = np.arange(self.meta.total_frames, self.meta.total_frames + episode_length)
         episode_buffer["episode_index"] = np.full((episode_length,), episode_index)
 
         # Update tasks and task indices with new tasks if any
         self.meta.save_episode_tasks(episode_tasks)
-
+        print("Episode tasks saved")
         # Given tasks in natural language, find their corresponding task indices
         episode_buffer["task_index"] = np.array([self.meta.get_task_index(task) for task in tasks])
-
+        print("Episode task index array created")
         for key, ft in self.features.items():
             # index, episode_index, task_index are already processed above, and image and video
             # are processed separately by storing image path and frame info as meta data
             if key in ["index", "episode_index", "task_index"] or ft["dtype"] in ["image", "video"]:
                 continue
             episode_buffer[key] = np.stack(episode_buffer[key])
+            print(f"Episode buffer {key} stacked")
 
         # Wait for image writer to end, so that episode stats over images can be computed
         self._wait_image_writer()
         ep_stats = compute_episode_stats(episode_buffer, self.features)
-
+        print("Episode stats computed")
         ep_metadata = self._save_episode_data(episode_buffer)
+        print("Episode metadata saved")
         has_video_keys = len(self.meta.video_keys) > 0
         use_batched_encoding = self.batch_encoding_size > 1
-
+        print("Has video keys and not using batched encoding")
         if has_video_keys and not use_batched_encoding:
             num_cameras = len(self.meta.video_keys)
             if parallel_encoding and num_cameras > 1:
+                print("Parallel encoding and multiple cameras")
                 # TODO(Steven): Ideally we would like to control the number of threads per encoding such that:
                 # num_cameras * num_threads = (total_cpu -1)
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_cameras) as executor:
@@ -1226,19 +1232,24 @@ class LeRobotDataset(torch.utils.data.Dataset):
                             raise exc
 
                 for video_key in self.meta.video_keys:
+                    print(f"Saving episode video for {video_key}")
                     temp_path = results[video_key]
                     ep_metadata.update(
                         self._save_episode_video(video_key, episode_index, temp_path=temp_path)
                     )
             else:
                 for video_key in self.meta.video_keys:
+                    print(f"Saving episode video for {video_key}")
                     ep_metadata.update(self._save_episode_video(video_key, episode_index))
 
         # `meta.save_episode` need to be executed after encoding the videos
+        print("Saving episode metadata")
         self.meta.save_episode(episode_index, episode_length, episode_tasks, ep_stats, ep_metadata)
-
+        print("Episode metadata saved")
+        print("Has video keys and using batched encoding")
         if has_video_keys and use_batched_encoding:
             # Check if we should trigger batch encoding
+            print("Checking if we should trigger batch encoding")
             self.episodes_since_last_encoding += 1
             if self.episodes_since_last_encoding == self.batch_encoding_size:
                 start_ep = self.num_episodes - self.batch_encoding_size

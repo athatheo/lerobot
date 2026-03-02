@@ -121,11 +121,11 @@ phone = ["hebi-py>=2.8.0,<2.12.0", "teleop>=0.1.0,<0.2.0", "fastapi<1.0"]
 
 # Policies
 wallx = [
-    "transformers==4.49.0",
+    "lerobot[transformers-dep]",
     "peft==0.17.1",
     "scipy==1.15.3",
     "torchdiffeq==0.2.5",
-    "qwen_vl_utils==0.0.11"
+    "qwen-vl-utils>=0.0.14"
 ]
 pi = ["transformers @ git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi"]
 smolvla = ["lerobot[transformers-dep]", "num2words>=0.5.14,<0.6.0", "accelerate>=1.7.0,<2.0.0", "safetensors>=0.4.3,<1.0.0"]
@@ -167,8 +167,8 @@ all = [
     "lerobot[reachy2]",
     "lerobot[kinematics]",
     "lerobot[intelrealsense]",
-    # "lerobot[wallx]",
-    "lerobot[pi]",
+    "lerobot[wallx]",
+    # "lerobot[pi]",  # pi uses git transformers, conflicts with transformers-dep
     "lerobot[smolvla]",
     # "lerobot[groot]", TODO(Steven): Gr00t requires specific installation instructions for flash-attn
     "lerobot[xvla]",
@@ -383,38 +383,42 @@ ignore_errors = false
 # ignore_errors = false
 
 [tool.uv]
-# wallx requires transformers==4.49.0 which conflicts with other extras that need >=4.53.0
+# pi uses transformers from git which conflicts with other extras that need transformers-dep
 conflicts = [
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "transformers-dep" },
     ],
     [
-        { extra = "wallx" },
         { extra = "pi" },
+        { extra = "wallx" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "smolvla" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "groot" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "xvla" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "hilserl" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
         { extra = "libero" },
     ],
     [
-        { extra = "wallx" },
+        { extra = "pi" },
+        { extra = "sarm" },
+    ],
+    [
+        { extra = "pi" },
         { extra = "all" },
     ],
 ]
